@@ -23,32 +23,28 @@ pipeline {
     stage('Build Image') {
       steps {
         script {
-          def apiUrl = ""
-          // Check branch to bake in correct NEXT_PUBLIC_API_URL at build-time
-          if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.endsWith('dev') || env.GIT_BRANCH?.endsWith('develop')) {
-            apiUrl = "http://43.156.229.247:8081" // Dev Backend API URL
-            echo "🔧 Building for DEV/DEVELOP branch with API: ${apiUrl}"
-          } else if (env.BRANCH_NAME == 'staging' || env.GIT_BRANCH?.endsWith('staging')) {
-            apiUrl = "http://43.156.229.247:8080" // Staging Backend API URL
-            echo "🔧 Building for STAGING branch with API: ${apiUrl}"
-          } else {
-            apiUrl = "http://43.156.229.247:8080" // Production Backend API URL
-            echo "🔧 Building for PRODUCTION branch with API: ${apiUrl}"
-          }
-          
-          sh "docker build --build-arg NEXT_PUBLIC_API_URL=${apiUrl} -t ${IMAGE_NAME}:latest -t ${IMAGE_NAME}:${env.BUILD_NUMBER} ."
-        }
-      }
-    }
+          def apiUrls = [
+            'develop' : 'https://crud-builder.aster-tech-indo.me',
+            'staging' : 'https://crud-builder.aster-tech-indo.me',
+            'main'    : 'https://crud-builder.aster-tech-indo.me'
+          ]
 
-    // =========================================================
-    // STAGE 2: Push Image to Registry
-    // =========================================================
-    stage('Push to Registry') {
-      steps {
-        sh "echo \$DOCKER_CREDS_PSW | docker login -u \$DOCKER_CREDS_USR --password-stdin"
-        sh "docker push ${IMAGE_NAME}:latest"
-        sh "docker push ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+          def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.tokenize('/')?.last() ?: 'develop'
+          def apiUrl = apiUrls[branch] ?: 'http://localhost:8080'
+
+          // withCredentials safely masks secrets — no interpolation into Groovy strings
+          withCredentials([usernamePassword(
+            credentialsId: 'docker-hub-credentials',
+            usernameVariable: 'DOCKER_USER',
+            passwordVariable: 'DOCKER_PASS'
+          )]) {
+            sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+            sh "docker build --build-arg NEXT_PUBLIC_API_URL=${apiUrl} -t ${IMAGE_NAME}:latest -t ${IMAGE_NAME}:${env.BUILD_NUMBER} ."
+            sh "docker push ${IMAGE_NAME}:latest"
+            sh "docker push ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+            sh 'docker logout'
+          }
+        }
       }
     }
 
