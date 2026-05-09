@@ -6,13 +6,13 @@ pipeline {
     DOCKER_CREDS = credentials('docker-hub-credentials')
     
     // Deployment configuration
-    PORT_DEV        = "3004"
+    PORT_DEV        = "3005"
     CONTAINER_DEV   = "irene-art-gallery-dev"
     
-    PORT_STAGING    = "3005"
+    PORT_STAGING    = "3006"
     CONTAINER_STAGE = "irene-art-gallery-staging"
 
-    PORT_PROD       = "3006"
+    PORT_PROD       = "3007"
     CONTAINER_PROD  = "irene-art-gallery-production"
   }
 
